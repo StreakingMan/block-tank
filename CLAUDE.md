@@ -1,167 +1,45 @@
-# BlockTank - Cocos Creator Project
+# BlockTank
 
-## Project Overview
-
-BlockTank is a hybrid mobile game combining classic Tank Battle with Tetris-style block mechanics, built on **Cocos Creator 3.8.8** (TypeScript). Players control a tank that fires Tetris-shaped blocks as projectiles; blocks embed into a grid and form rectangles to trigger area explosions.
-
-- **Design Resolution**: 720 x 1280 (portrait)
-- **Target Platforms**: Web, WeChat Mini Game
-- **Language**: TypeScript (strict: false)
+Cocos Creator 3.8.8 坦克+方块混合玩法游戏。720x1280 竖屏，目标平台 Web + 微信小游戏。
 
 ## Architecture
 
-**Event-Driven + Singleton** architecture. All inter-system communication goes through `EventManager`. Core managers are singletons accessed via `ClassName.instance`.
+Event-Driven + Singleton。系统间通过自定义 `EventManager` 通信，禁止直接持有跨系统引用。
 
 ```
-Core Layer (Singletons)
-├── GameManager      — Game lifecycle, score, HP, room progression
-├── EventManager     — Central event bus (Observer pattern)
-├── AudioManager     — BGM (1 channel) + SFX (8 channels)
-├── StorageManager   — localStorage with "bt_" prefix
-├── ResManager       — Async asset loading (Promise-based)
-└── ObjectPool       — cc.NodePool wrapper for prefab reuse
-
-Game Systems
-├── GridManager      — 10x16 grid data, coordinate conversion
-├── GridRenderer     — Graphics-based grid visualization
-├── AmmoManager      — Bag7 queue (current + next 2)
-├── DamageSystem     — Collision detection, rect elimination, AOE
-├── ExplosionManager — Visual effects + radius damage
-├── RectDetector     — Rectangle detection algorithm (>=2x2)
-├── RoomManager      — Wave spawning, room progression
-└── InputManager     — Touch input routing
-
-Entities
-├── TankBase → PlayerTank / EnemyTank
-├── BlockProjectile
-└── GhostPreview
-
-UI
-├── GameHUD, GameOverPanel
-├── DPadControl, ActionButtons
-└── AmmoQueueDisplay
+core/        — 单例管理器 (GameManager, EventManager, AudioManager, StorageManager, ResManager, ObjectPool)
+game/grid/   — 10x16 网格系统 (GridManager, GridCell, GridRenderer)
+game/tank/   — 坦克 (TankBase → PlayerTank / EnemyTank, TankAI)
+game/ammo/   — 弹药 (BlockData, AmmoManager, BlockProjectile, GhostPreview)
+game/combat/ — 战斗 (DamageSystem, ExplosionManager, RectDetector)
+game/input/  — 输入路由 (InputManager)
+game/level/  — 关卡 (RoomManager)
+ui/          — UI组件和面板
+data/configs/— 配置数据
+GameScene.ts — 场景入口，程序化构建整个场景层级
 ```
 
-## Directory Structure
+## Project Conventions
 
-```
-assets/
-├── scripts/
-│   ├── core/         # Singleton managers (GameManager, EventManager, etc.)
-│   ├── game/
-│   │   ├── grid/     # GridManager, GridCell, GridRenderer
-│   │   ├── tank/     # TankBase, PlayerTank, EnemyTank, TankAI
-│   │   ├── ammo/     # BlockData, AmmoManager, BlockProjectile, GhostPreview
-│   │   ├── combat/   # DamageSystem, ExplosionManager, RectDetector
-│   │   ├── input/    # InputManager
-│   │   ├── level/    # RoomManager
-│   │   └── GameScene.ts   # Scene entry point, wires all systems
-│   ├── data/configs/      # EnemyConfig (wave generation)
-│   └── ui/
-│       ├── base/     # UIBase
-│       ├── panels/   # GameHUD, GameOverPanel
-│       └── components/  # DPadControl, ActionButtons, AmmoQueueDisplay
-├── resources/        # Runtime-loaded assets (audio, configs, textures)
-├── prefabs/          # Prefab templates (block, effect, tank, ui)
-└── scenes/           # Scene files (currently programmatic)
-settings/v2/packages/ # Cocos project settings
-```
-
-## Coding Conventions
-
-### General
-- All game systems are **singletons** — access via `ClassName.instance`
-- Systems communicate through **events only** — never hold direct references between systems
-- Event names are defined as constants in `Constants.ts` — always use constants, never hardcode strings
-- Grid coordinates: origin at **bottom-left**, row 0 = bottom, col 0 = left
-- All positions in gameplay are **integer grid coordinates** — no sub-cell float positions
-
-### TypeScript
-- Use Cocos Creator component decorators: `@ccclass`, `@property`
-- Extend `cc.Component` for scene-attached scripts
-- Use `cc.v2()` / `cc.v3()` for vector operations
-- Async asset loading returns `Promise` — use `await`
-- `tsconfig.json` extends `temp/tsconfig.cocos.json`, strict mode is off
-
-### Naming
-- Files: PascalCase (e.g., `GameManager.ts`, `BlockProjectile.ts`)
-- Classes: PascalCase
-- Methods/variables: camelCase
-- Constants: UPPER_SNAKE_CASE
-- Enums: PascalCase names, UPPER_SNAKE_CASE values
-- Private methods: prefixed with `_` (e.g., `_aiTick()`, `_startNextWave()`)
-- Event constants: UPPER_SNAKE_CASE grouped by domain (e.g., `GRID_CELL_CHANGED`, `TANK_HIT`)
-
-### Event System
-```typescript
-// Listen
-EventManager.instance.on(Constants.Events.TANK_HIT, this._onTankHit, this);
-// Emit
-EventManager.instance.emit(Constants.Events.TANK_HIT, { tank, damage });
-// Cleanup (important — call in onDestroy)
-EventManager.instance.offTarget(this);
-```
-
-### Grid Operations
-```typescript
-// Coordinate conversion
-const pixel = GridManager.instance.gridToPixel(row, col);
-const grid = GridManager.instance.pixelToGrid(x, y);
-// Cell queries
-GridManager.instance.isWalkable(row, col);
-GridManager.instance.isEmpty(row, col);
-```
-
-## Key Game Constants
-
-| Constant | Value | Notes |
-|----------|-------|-------|
-| GRID_COLS / GRID_ROWS | 10 / 16 | Grid dimensions |
-| CELL_SIZE | ~40px | Dynamic, based on resolution |
-| PLAYER_TANK_SPEED | 4 | cells/sec |
-| PROJECTILE_SPEED | 12 | cells/sec |
-| TERRAIN_DECAY_TIME | 8.0 | seconds |
-| PLAYER_INITIAL_HP | 5 | |
-| PLAYER_INITIAL_RANGE | 4 | cells |
-| ENEMY_KILL_SCORE | 50 | points |
-| RECT_CLEAR_SCORE | 30 | points per cell |
-| Bag size | 7 | Standard Tetris Bag7 |
-
-## Game Flow
-
-1. **GameScene.onLoad()** — Build scene hierarchy, attach all components
-2. **GameScene.start()** — Init ammo queue, spawn player at (1,4), start game
-3. **Gameplay loop** — Input → Tank actions → Projectiles → Collisions → Rect detection → Explosions → Grid decay
-4. **Room progression** — Waves of enemies → all cleared → next room
-5. **Game Over** — Player HP=0 → save high score → show panel → restart
-
-## Development Notes
-
-- **No external dependencies** — pure Cocos Creator APIs
-- **Scene built programmatically** in `GameScene.ts` — not via editor scene files
-- **WeChat Mini Game** support: `StorageManager` has `wx.setStorageSync` fallback
-- **Object Pool** ready but currently only used for AudioSource channels
-- **Pathfinding**: BFS with max 80 steps in `TankAI`
-- **Rectangle detection**: Brute-force all possible rects >= 2x2, finds largest first, supports cascading
+- 文件名 PascalCase（与官方 kebab-case 建议不同，本项目已有惯例，保持一致）
+- 单例用 `static _instance` + `static get instance()` 模式，在 `onLoad` 赋值，`onDestroy` 置空
+- 事件名在 `Constants.ts` 中定义为 `GameEvent` 枚举，禁止硬编码字符串
+- 事件监听必须传 `this` 作为 target，`onDestroy` 中必须调用 `EventManager.instance.offTarget(this)`
+- 本项目不使用 `@property` 装饰器 —— 所有节点和组件通过代码动态创建 (`addComponent`)
+- 场景完全程序化构建于 `GameScene._buildScene()`，不依赖 .scene 编辑器文件
+- 网格坐标原点在左下角，row 0 = 底部，col 0 = 左侧，游戏逻辑中只用整数坐标
+- 所有常量集中在 `Constants.ts`，禁止在组件中硬编码魔法数字
+- 持久化通过 `StorageManager`（key 前缀 `bt_`），兼容微信小游戏 `wx.setStorageSync`
+- 视觉渲染基于 `cc.Graphics` 代码绘制（注意：Graphics 组件会打断 UI 合批）
 
 ## Common Tasks
 
-### Adding a new event
-1. Add constant to `Constants.ts` under `Events`
-2. Emit via `EventManager.instance.emit()`
-3. Listen via `EventManager.instance.on()` — always clean up in `onDestroy()`
+**添加事件**: Constants.ts 加枚举 → emit → on + offTarget 清理
+**添加敌人类型**: Constants.ts 加 TankType → EnemyConfig.ts 配置波次 → EnemyTank.ts 定制 AI
+**添加方块形状**: BlockData.ts 定义 4 旋转态 + 颜色 → AmmoManager Bag7 自动纳入
+**添加格子类型**: Constants.ts 加 CellType → GridCell.ts 定义通行/破坏规则 → GridRenderer.ts 渲染
 
-### Adding a new enemy type
-1. Add entry to `TankType` enum in `Constants.ts` with stats
-2. Update `EnemyConfig.ts` wave generation logic
-3. Optionally customize AI behavior in `EnemyTank.ts`
+## Key Constants
 
-### Adding a new block shape
-1. Add shape definition in `BlockData.ts` (4 rotation states)
-2. Add color mapping in `BLOCK_COLORS`
-3. `AmmoManager` Bag7 will automatically include it
-
-### Adding a new cell type
-1. Add to `CellType` enum in `Constants.ts`
-2. Define walkability/destructibility rules in `GridCell.ts`
-3. Add rendering color in `GridRenderer.ts`
+Grid: 10x16, ~40px/cell | Player: speed=4, hp=5, range=4, fireCD=0.4s
+Projectile: speed=12 | Terrain decay: 8s | Enemy kill: 50pts | Rect clear: 30pts/cell
