@@ -23,13 +23,13 @@ export class EnemyConfig {
 
         const waves: WaveConfig[] = [];
 
-        // 第一波
+        // 第一波（坐标适配 20x32 网格，坦克占 2x2）
         const wave1: EnemyDef[] = [];
         for (let i = 0; i < Math.min(baseCount, 3); i++) {
             wave1.push({
                 type: TankType.ENEMY_BASIC,
-                row: GRID_ROWS - 2,
-                col: 2 + i * 3,
+                row: GRID_ROWS - 3,
+                col: 4 + i * 6,
             });
         }
         waves.push({ enemies: wave1 });
@@ -40,8 +40,8 @@ export class EnemyConfig {
             for (let i = 0; i < baseCount - 3; i++) {
                 wave2.push({
                     type: i % 2 === 0 ? TankType.ENEMY_FAST : TankType.ENEMY_BASIC,
-                    row: GRID_ROWS - 2,
-                    col: 1 + i * 4,
+                    row: GRID_ROWS - 3,
+                    col: 2 + i * 6,
                 });
             }
             waves.push({ enemies: wave2 });

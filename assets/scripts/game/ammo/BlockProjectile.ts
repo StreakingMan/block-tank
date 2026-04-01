@@ -141,8 +141,8 @@ export class BlockProjectile extends Component {
     private _renderBlock(): void {
         const gm = GridManager.instance;
         const cellSize = gm.cellSize;
-        // 飞行方块缩小为格子的40%显示，作为弹药视觉
-        const miniSize = cellSize * 0.4;
+        // 飞行方块缩小显示，作为弹药视觉（格子较小时适当放大比例）
+        const miniSize = cellSize * 0.75;
         const cells = getBlockCells(this._shape, this._rotation);
         const color = SHAPE_COLORS[this._shape] || new Color(255, 255, 255, 255);
 

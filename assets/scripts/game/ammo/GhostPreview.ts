@@ -2,7 +2,7 @@
  * 幽灵方块预览 - 在射程内显示半透明落点预览
  */
 import { _decorator, Component, Graphics, Color, Node } from 'cc';
-import { Direction, DIR_OFFSET, BlockShape, GameEvent, GRID_COLS, GRID_ROWS } from '../../core/Constants';
+import { Direction, DIR_OFFSET, BlockShape, GameEvent, GRID_COLS, GRID_ROWS, TANK_SIZE } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GridManager } from '../grid/GridManager';
 import { getBlockCells } from './BlockData';
@@ -10,8 +10,16 @@ import { AmmoManager } from './AmmoManager';
 
 const { ccclass } = _decorator;
 
-const GHOST_COLOR_VALID = new Color(100, 255, 100, 80);
-const GHOST_COLOR_INVALID = new Color(255, 60, 60, 80);
+/** 方块形状对应颜色（与 GridRenderer 一致） */
+const GHOST_BLOCK_COLORS: Record<string, Color> = {
+    [BlockShape.I]: new Color(0, 240, 240),
+    [BlockShape.O]: new Color(240, 240, 0),
+    [BlockShape.T]: new Color(160, 0, 240),
+    [BlockShape.S]: new Color(0, 240, 0),
+    [BlockShape.Z]: new Color(240, 0, 0),
+    [BlockShape.L]: new Color(240, 160, 0),
+    [BlockShape.J]: new Color(0, 0, 240),
+};
 
 @ccclass('GhostPreview')
 export class GhostPreview extends Component {
@@ -49,17 +57,25 @@ export class GhostPreview extends Component {
         const cells = getBlockCells(ammo.shape, ammo.rotation);
         const offset = DIR_OFFSET[direction];
 
+        // 从 2x2 坦克边缘开始搜索：向前偏移 TANK_SIZE
+        let edgeRow = tankRow;
+        let edgeCol = tankCol;
+        if (offset.dr > 0) edgeRow += TANK_SIZE;
+        else if (offset.dr < 0) edgeRow -= 1;
+        if (offset.dc > 0) edgeCol += TANK_SIZE;
+        else if (offset.dc < 0) edgeCol -= 1;
+
         // 沿方向查找射程内的落点
-        let targetRow = tankRow + offset.dr * range;
-        let targetCol = tankCol + offset.dc * range;
+        let targetRow = edgeRow + offset.dr * range;
+        let targetCol = edgeCol + offset.dc * range;
 
         // 从远到近找第一个可放置的位置
         const gm = GridManager.instance;
         let found = false;
 
         for (let dist = range; dist >= 1; dist--) {
-            const r = tankRow + offset.dr * dist;
-            const c = tankCol + offset.dc * dist;
+            const r = edgeRow + offset.dr * dist;
+            const c = edgeCol + offset.dc * dist;
 
             if (this._canPlace(r, c, cells, gm)) {
                 targetRow = r;
@@ -71,8 +87,8 @@ export class GhostPreview extends Component {
 
         if (!found) {
             // 射程内无空位，显示为红色
-            targetRow = tankRow + offset.dr;
-            targetCol = tankCol + offset.dc;
+            targetRow = edgeRow + offset.dr;
+            targetCol = edgeCol + offset.dc;
         }
 
         this._targetRow = targetRow;
@@ -110,38 +126,48 @@ export class GhostPreview extends Component {
         const g = this._graphics;
         const gm = GridManager.instance;
         const cellSize = gm.cellSize;
+        const ammo = AmmoManager.instance.currentAmmo;
 
         g.clear();
-        g.fillColor = this._isValid ? GHOST_COLOR_VALID : GHOST_COLOR_INVALID;
+
+        // 获取方块对应颜色
+        const baseColor = ammo ? (GHOST_BLOCK_COLORS[ammo.shape] || new Color(200, 200, 200)) : new Color(200, 200, 200);
+        const fillAlpha = this._isValid ? 100 : 60;
+        const borderColor = this._isValid ? new Color(255, 255, 255, 220) : new Color(255, 80, 80, 220);
+
+        const pad = 1;
+        const s = cellSize - pad * 2;
 
         for (const [dr, dc] of cells) {
             const r = this._targetRow + dr;
             const c = this._targetCol + dc;
             const pos = gm.gridToPixel(r, c);
-            g.rect(
-                pos.x - cellSize / 2 + 1,
-                pos.y - cellSize / 2 + 1,
-                cellSize - 2,
-                cellSize - 2
-            );
-        }
-        g.fill();
+            const x = pos.x - cellSize / 2 + pad;
+            const y = pos.y - cellSize / 2 + pad;
 
-        // 轮廓
-        g.strokeColor = this._isValid ? new Color(100, 255, 100, 160) : new Color(255, 60, 60, 160);
-        g.lineWidth = 1.5;
-        for (const [dr, dc] of cells) {
-            const r = this._targetRow + dr;
-            const c = this._targetCol + dc;
-            const pos = gm.gridToPixel(r, c);
-            g.rect(
-                pos.x - cellSize / 2 + 1,
-                pos.y - cellSize / 2 + 1,
-                cellSize - 2,
-                cellSize - 2
-            );
+            // 1. 半透明方块色填充
+            g.fillColor = new Color(baseColor.r, baseColor.g, baseColor.b, fillAlpha);
+            g.rect(x, y, s, s);
+            g.fill();
+
+            // 2. 内部十字标记（区分于实体地形）
+            g.strokeColor = new Color(baseColor.r, baseColor.g, baseColor.b, 140);
+            g.lineWidth = 1;
+            const cx = x + s / 2;
+            const cy = y + s / 2;
+            const m = s * 0.3;
+            g.moveTo(cx - m, cy);
+            g.lineTo(cx + m, cy);
+            g.moveTo(cx, cy - m);
+            g.lineTo(cx, cy + m);
+            g.stroke();
+
+            // 3. 粗边框
+            g.strokeColor = borderColor;
+            g.lineWidth = 2;
+            g.rect(x, y, s, s);
+            g.stroke();
         }
-        g.stroke();
     }
 
     private _registerEvents(): void {

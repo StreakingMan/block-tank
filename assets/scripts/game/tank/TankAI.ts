@@ -1,7 +1,7 @@
 /**
  * 坦克AI系统 - BFS移动 + 方块射击AI
  */
-import { Direction, GRID_COLS, GRID_ROWS } from '../../core/Constants';
+import { Direction, GRID_COLS, GRID_ROWS, TANK_SIZE } from '../../core/Constants';
 import { GridManager } from '../grid/GridManager';
 
 interface GridPos {
@@ -33,7 +33,7 @@ export class TankAI {
             const delta = DIR_DELTAS[dir];
             const nr = start.row + delta.row;
             const nc = start.col + delta.col;
-            if (grid.isWalkable(nr, nc) && !visited.has(key(nr, nc))) {
+            if (grid.isAreaWalkable(nr, nc, TANK_SIZE) && !visited.has(key(nr, nc))) {
                 if (nr === target.row && nc === target.col) return dir;
                 visited.add(key(nr, nc));
                 queue.push({ pos: { row: nr, col: nc }, firstDir: dir });
@@ -52,7 +52,7 @@ export class TankAI {
                 const nr = pos.row + delta.row;
                 const nc = pos.col + delta.col;
 
-                if (!grid.isWalkable(nr, nc)) continue;
+                if (!grid.isAreaWalkable(nr, nc, TANK_SIZE)) continue;
                 if (visited.has(key(nr, nc))) continue;
 
                 if (nr === target.row && nc === target.col) {

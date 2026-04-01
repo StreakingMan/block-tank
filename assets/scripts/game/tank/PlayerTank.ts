@@ -6,7 +6,7 @@ import { TankBase } from './TankBase';
 import {
     TankType, Direction, GameEvent, PLAYER_TANK_SPEED,
     PLAYER_INITIAL_HP, PLAYER_INITIAL_RANGE, AmmoMode,
-    BlockShape, TerrainOwner, BLOCK_HIT_DAMAGE
+    BlockShape, TerrainOwner, BLOCK_HIT_DAMAGE, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GameManager } from '../../core/GameManager';
@@ -69,16 +69,18 @@ export class PlayerTank extends TankBase {
         projNode.parent = this._projectileLayer;
         const proj = projNode.addComponent(BlockProjectile);
 
-        const offset = { dr: 0, dc: 0 };
+        // 从 2x2 坦克边缘发射：UP/RIGHT 从高侧出发，DOWN/LEFT 从低侧出发
+        let startRow = this._gridRow;
+        let startCol = this._gridCol;
         const d = this._direction;
-        if (d === Direction.UP) { offset.dr = 1; }
-        else if (d === Direction.DOWN) { offset.dr = -1; }
-        else if (d === Direction.LEFT) { offset.dc = -1; }
-        else if (d === Direction.RIGHT) { offset.dc = 1; }
+        if (d === Direction.UP) { startRow += TANK_SIZE; }
+        else if (d === Direction.DOWN) { startRow -= 1; }
+        else if (d === Direction.LEFT) { startCol -= 1; }
+        else if (d === Direction.RIGHT) { startCol += TANK_SIZE; }
 
         proj.fire(
-            this._gridRow + offset.dr,
-            this._gridCol + offset.dc,
+            startRow,
+            startCol,
             this._direction,
             ammo.shape,
             ammo.rotation,

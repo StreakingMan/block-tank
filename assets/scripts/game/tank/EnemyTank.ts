@@ -6,7 +6,7 @@ import { _decorator, Node } from 'cc';
 import { TankBase } from './TankBase';
 import {
     TankType, Direction, GameEvent, ENEMY_KILL_SCORE,
-    BlockShape, TerrainOwner
+    BlockShape, TerrainOwner, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GameManager } from '../../core/GameManager';
@@ -17,10 +17,10 @@ import { TankAI } from './TankAI';
 
 const { ccclass } = _decorator;
 
-/** 敌人属性表 */
+/** 敌人属性表（网格翻倍后速度和射程翻倍） */
 const ENEMY_STATS: Record<number, { speed: number; hp: number; fireCd: number; range: number }> = {
-    [TankType.ENEMY_BASIC]: { speed: 2, hp: 2, fireCd: 2.0, range: 6 },
-    [TankType.ENEMY_FAST]: { speed: 4, hp: 1, fireCd: 1.5, range: 4 },
+    [TankType.ENEMY_BASIC]: { speed: 4, hp: 2, fireCd: 2.0, range: 12 },
+    [TankType.ENEMY_FAST]: { speed: 8, hp: 1, fireCd: 1.5, range: 8 },
 };
 
 @ccclass('EnemyTank')
@@ -113,16 +113,18 @@ export class EnemyTank extends TankBase {
         projNode.parent = this._projectileLayer;
         const proj = projNode.addComponent(BlockProjectile);
 
+        // 从 2x2 坦克边缘发射
+        let startRow = this._gridRow;
+        let startCol = this._gridCol;
         const d = this._direction;
-        const offset = { dr: 0, dc: 0 };
-        if (d === Direction.UP) offset.dr = 1;
-        else if (d === Direction.DOWN) offset.dr = -1;
-        else if (d === Direction.LEFT) offset.dc = -1;
-        else if (d === Direction.RIGHT) offset.dc = 1;
+        if (d === Direction.UP) startRow += TANK_SIZE;
+        else if (d === Direction.DOWN) startRow -= 1;
+        else if (d === Direction.LEFT) startCol -= 1;
+        else if (d === Direction.RIGHT) startCol += TANK_SIZE;
 
         proj.fire(
-            this._gridRow + offset.dr,
-            this._gridCol + offset.dc,
+            startRow,
+            startCol,
             this._direction,
             shape,
             rotation,

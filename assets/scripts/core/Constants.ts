@@ -6,10 +6,13 @@
 // ======================== 网格 ========================
 
 /** 网格列数 */
-export const GRID_COLS = 10;
+export const GRID_COLS = 20;
 
 /** 网格行数 */
-export const GRID_ROWS = 16;
+export const GRID_ROWS = 32;
+
+/** 坦克占位尺寸（格） */
+export const TANK_SIZE = 2;
 
 /** 设计分辨率 */
 export const DESIGN_WIDTH = 720;
@@ -24,16 +27,16 @@ export const CONTROL_HEIGHT = 260;
 // ======================== 游戏 ========================
 
 /** 玩家坦克速度（格/秒） */
-export const PLAYER_TANK_SPEED = 4;
+export const PLAYER_TANK_SPEED = 8;
 
 /** 玩家初始HP */
 export const PLAYER_INITIAL_HP = 5;
 
 /** 方块飞行速度（格/秒） */
-export const PROJECTILE_SPEED = 12;
+export const PROJECTILE_SPEED = 24;
 
 /** 玩家初始射程（格） */
-export const PLAYER_INITIAL_RANGE = 4;
+export const PLAYER_INITIAL_RANGE = 8;
 
 /** 地形衰减时间（秒） */
 export const TERRAIN_DECAY_TIME = 8.0;
@@ -54,10 +57,10 @@ export const BLOCK_HIT_DAMAGE = 1;
 
 /** 矩形爆炸范围（格子外扩距离）按矩形面积分级 */
 export const EXPLOSION_RADIUS: Record<string, number> = {
-    'small': 1,    // 2×2 = 4格
-    'medium': 2,   // 2×3/3×2 = 6格
-    'large': 3,    // 2×4/4×2/3×3 = 8-9格
-    'huge': 5,     // 3×4+ = 12+格
+    'small': 2,    // 2×2 = 4格
+    'medium': 4,   // 2×3/3×2 = 6格
+    'large': 6,    // 2×4/4×2/3×3 = 8-9格
+    'huge': 10,    // 3×4+ = 12+格
 };
 
 /** 矩形爆炸伤害按面积分级 */

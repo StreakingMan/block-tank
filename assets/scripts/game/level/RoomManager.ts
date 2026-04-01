@@ -3,7 +3,7 @@
  */
 import { _decorator, Component, Node } from 'cc';
 import {
-    GameEvent, TankType, CellType, GRID_COLS, GRID_ROWS, Direction
+    GameEvent, TankType, CellType, GRID_COLS, GRID_ROWS, Direction, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GridManager } from '../grid/GridManager';
@@ -103,14 +103,15 @@ export class RoomManager extends Component {
         if (!this._tankLayer || !this._projectileLayer) return;
 
         const gm = GridManager.instance;
-        if (!gm.isWalkable(row, col)) {
-            // 找附近空位
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let dc = -1; dc <= 1; dc++) {
-                    if (gm.isWalkable(row + dr, col + dc)) {
+        if (!gm.isAreaWalkable(row, col, TANK_SIZE)) {
+            // 找附近空位（2x2 可通行）
+            let found = false;
+            for (let dr = -2; dr <= 2 && !found; dr++) {
+                for (let dc = -2; dc <= 2 && !found; dc++) {
+                    if (gm.isAreaWalkable(row + dr, col + dc, TANK_SIZE)) {
                         row += dr;
                         col += dc;
-                        break;
+                        found = true;
                     }
                 }
             }
@@ -130,16 +131,17 @@ export class RoomManager extends Component {
         }
     }
 
-    /** 生成初始地形 */
+    /** 生成初始地形（坐标适配 20x32 网格） */
     private _spawnInitialTerrain(): void {
         const gm = GridManager.instance;
 
         // 几个砖墙作为初始掩体
         const brickPositions = [
-            { r: 4, c: 3 }, { r: 4, c: 4 }, { r: 4, c: 5 }, { r: 4, c: 6 },
-            { r: 8, c: 1 }, { r: 8, c: 2 },
-            { r: 8, c: 7 }, { r: 8, c: 8 },
-            { r: 12, c: 4 }, { r: 12, c: 5 },
+            { r: 8, c: 6 }, { r: 8, c: 7 }, { r: 8, c: 8 }, { r: 8, c: 9 },
+            { r: 8, c: 10 }, { r: 8, c: 11 }, { r: 8, c: 12 }, { r: 8, c: 13 },
+            { r: 16, c: 2 }, { r: 16, c: 3 }, { r: 16, c: 4 },
+            { r: 16, c: 15 }, { r: 16, c: 16 }, { r: 16, c: 17 },
+            { r: 24, c: 8 }, { r: 24, c: 9 }, { r: 24, c: 10 }, { r: 24, c: 11 },
         ];
 
         for (const pos of brickPositions) {
@@ -150,8 +152,9 @@ export class RoomManager extends Component {
 
         // 钢墙
         const steelPositions = [
-            { r: 6, c: 0 }, { r: 6, c: 9 },
-            { r: 10, c: 4 }, { r: 10, c: 5 },
+            { r: 12, c: 0 }, { r: 12, c: 1 },
+            { r: 12, c: 18 }, { r: 12, c: 19 },
+            { r: 20, c: 9 }, { r: 20, c: 10 },
         ];
         for (const pos of steelPositions) {
             if (gm.isValidPos(pos.r, pos.c)) {

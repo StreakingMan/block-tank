@@ -6,7 +6,7 @@ import { _decorator, Component, Vec2 } from 'cc';
 import {
     GRID_COLS, GRID_ROWS, CellType, GameEvent, TerrainOwner,
     BlockShape, TERRAIN_DECAY_TIME, TERRAIN_COLLAPSE_DAMAGE,
-    DESIGN_WIDTH, DESIGN_HEIGHT, HUD_HEIGHT, CONTROL_HEIGHT
+    DESIGN_WIDTH, DESIGN_HEIGHT, HUD_HEIGHT, CONTROL_HEIGHT, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GridCell } from './GridCell';
@@ -149,6 +149,23 @@ export class GridManager extends Component {
             }
         }
         return true;
+    }
+
+    /** 检查区域是否全部可通行（用于坦克 2x2 移动检测） */
+    isAreaWalkable(row: number, col: number, size: number = TANK_SIZE): boolean {
+        for (let r = row; r < row + size; r++) {
+            for (let c = col; c < col + size; c++) {
+                if (!this.isWalkable(r, c)) return false;
+            }
+        }
+        return true;
+    }
+
+    /** 获取多格实体的中心像素坐标 */
+    gridToPixelCenter(row: number, col: number, size: number): Vec2 {
+        const halfOffset = (size - 1) * this._cellSize / 2;
+        const base = this.gridToPixel(row, col);
+        return new Vec2(base.x + halfOffset, base.y + halfOffset);
     }
 
     /** 检查指定位置是否有地形方块 */

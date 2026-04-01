@@ -5,7 +5,7 @@
 import { _decorator, Component, Node } from 'cc';
 import {
     GameEvent, BLOCK_HIT_DAMAGE, TERRAIN_COLLAPSE_DAMAGE,
-    GRID_COLS, GRID_ROWS, TerrainOwner
+    GRID_COLS, GRID_ROWS, TerrainOwner, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GameManager } from '../../core/GameManager';
@@ -60,6 +60,12 @@ export class DamageSystem extends Component {
         this._checkProjectileCollisions();
     }
 
+    /** 检测点是否在坦克 2x2 区域内 */
+    private _isInsideTank(tank: TankBase, row: number, col: number): boolean {
+        return row >= tank.gridRow && row < tank.gridRow + TANK_SIZE
+            && col >= tank.gridCol && col < tank.gridCol + TANK_SIZE;
+    }
+
     private _checkProjectileCollisions(): void {
         // 获取ProjectileLayer下所有BlockProjectile
         const projLayer = this.node.parent?.getChildByName('ProjectileLayer');
@@ -72,10 +78,9 @@ export class DamageSystem extends Component {
             const pr = proj.currentGridRow;
             const pc = proj.currentGridCol;
 
-            // 检测是否命中坦克
+            // 检测是否命中坦克（2x2 区域判定）
             if (proj.owner === TerrainOwner.ENEMY && this._playerTank && this._playerTank.isAlive) {
-                if (this._playerTank.gridRow === pr && this._playerTank.gridCol === pc) {
-                    // 命中玩家
+                if (this._isInsideTank(this._playerTank, pr, pc)) {
                     GameManager.instance.damagePlayer(BLOCK_HIT_DAMAGE);
                     proj.onHitEntity();
                     continue;
@@ -85,7 +90,7 @@ export class DamageSystem extends Component {
             if (proj.owner === TerrainOwner.PLAYER) {
                 for (const enemy of this._enemies) {
                     if (!enemy.isAlive) continue;
-                    if (enemy.gridRow === pr && enemy.gridCol === pc) {
+                    if (this._isInsideTank(enemy, pr, pc)) {
                         enemy.takeDamage(BLOCK_HIT_DAMAGE);
                         proj.onHitEntity();
                         break;
@@ -95,22 +100,27 @@ export class DamageSystem extends Component {
         }
     }
 
+    /** 计算点到 2x2 坦克的最短曼哈顿距离 */
+    private _distToTank(tank: TankBase, row: number, col: number): number {
+        // 计算到坦克占据的 2x2 区域最近边的距离
+        const clampedRow = Math.max(tank.gridRow, Math.min(row, tank.gridRow + TANK_SIZE - 1));
+        const clampedCol = Math.max(tank.gridCol, Math.min(col, tank.gridCol + TANK_SIZE - 1));
+        return Math.abs(row - clampedRow) + Math.abs(col - clampedCol);
+    }
+
     /** 处理矩形消除后的爆炸伤害 */
     private _handleRectExplosion(data: any): void {
         const { centerRow, centerCol, radius, damage } = data;
 
-        // 对范围内的坦克造成伤害
         if (this._playerTank && this._playerTank.isAlive) {
-            const dist = Math.abs(this._playerTank.gridRow - centerRow) + Math.abs(this._playerTank.gridCol - centerCol);
-            if (dist <= radius) {
+            if (this._distToTank(this._playerTank, centerRow, centerCol) <= radius) {
                 GameManager.instance.damagePlayer(damage);
             }
         }
 
         for (const enemy of this._enemies) {
             if (!enemy.isAlive) continue;
-            const dist = Math.abs(enemy.gridRow - centerRow) + Math.abs(enemy.gridCol - centerCol);
-            if (dist <= radius) {
+            if (this._distToTank(enemy, centerRow, centerCol) <= radius) {
                 enemy.takeDamage(damage);
             }
         }
@@ -118,18 +128,15 @@ export class DamageSystem extends Component {
 
     /** 处理地形崩裂的保底伤害 */
     private _handleTerrainCollapse(row: number, col: number, damage: number): void {
-        // 对相邻格子的坦克造成伤害
         if (this._playerTank && this._playerTank.isAlive) {
-            const dist = Math.abs(this._playerTank.gridRow - row) + Math.abs(this._playerTank.gridCol - col);
-            if (dist <= 1) {
+            if (this._distToTank(this._playerTank, row, col) <= 1) {
                 GameManager.instance.damagePlayer(damage);
             }
         }
 
         for (const enemy of this._enemies) {
             if (!enemy.isAlive) continue;
-            const dist = Math.abs(enemy.gridRow - row) + Math.abs(enemy.gridCol - col);
-            if (dist <= 1) {
+            if (this._distToTank(enemy, row, col) <= 1) {
                 enemy.takeDamage(damage);
             }
         }

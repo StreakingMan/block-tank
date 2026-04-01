@@ -185,8 +185,8 @@ export class GameScene extends Component {
         // 初始化弹药
         AmmoManager.instance.init();
 
-        // 生成玩家坦克
-        this._playerTank.spawn(1, 4);
+        // 生成玩家坦克（网格翻倍后位置对应调整）
+        this._playerTank.spawn(2, 9);
 
         // 开始游戏
         GameManager.instance.startGame();

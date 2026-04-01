@@ -4,7 +4,7 @@
 import { _decorator, Component, Vec3, Node, Graphics, Color, UITransform } from 'cc';
 import {
     Direction, TankType, GameEvent, DIR_OFFSET, DIR_ANGLE,
-    BLOCK_HIT_DAMAGE
+    BLOCK_HIT_DAMAGE, TANK_SIZE
 } from '../../core/Constants';
 import { EventManager } from '../../core/EventManager';
 import { GridManager } from '../grid/GridManager';
@@ -62,7 +62,7 @@ export class TankBase extends Component {
         const newCol = this._gridCol + offset.dc;
 
         const grid = GridManager.instance;
-        if (!grid || !grid.isWalkable(newRow, newCol)) return false;
+        if (!grid || !grid.isAreaWalkable(newRow, newCol, TANK_SIZE)) return false;
 
         this._gridRow = newRow;
         this._gridCol = newCol;
@@ -124,7 +124,7 @@ export class TankBase extends Component {
     protected _startMoveAnimation(): void {
         this._isMoving = true;
         const gm = GridManager.instance;
-        const targetPos = gm.gridToPixel(this._gridRow, this._gridCol);
+        const targetPos = gm.gridToPixelCenter(this._gridRow, this._gridCol, TANK_SIZE);
 
         const duration = 1 / this._speed;
         const startPos = new Vec3(this.node.position);
@@ -151,7 +151,7 @@ export class TankBase extends Component {
     protected _syncPositionToGrid(): void {
         const gm = GridManager.instance;
         if (!gm) return;
-        const pos = gm.gridToPixel(this._gridRow, this._gridCol);
+        const pos = gm.gridToPixelCenter(this._gridRow, this._gridCol, TANK_SIZE);
         this.node.setPosition(pos.x, pos.y, 0);
     }
 
@@ -159,11 +159,11 @@ export class TankBase extends Component {
         this.node.setRotationFromEuler(0, 0, DIR_ANGLE[this._direction]);
     }
 
-    /** 用Graphics绘制坦克外观（占满一整格） */
+    /** 用Graphics绘制坦克外观（占满 TANK_SIZE x TANK_SIZE 格） */
     protected _renderTank(): void {
         const gm = GridManager.instance;
         if (!gm) return;
-        const size = gm.cellSize;
+        const size = gm.cellSize * TANK_SIZE;
         const half = size / 2;
 
         let g = this.node.getComponent(Graphics);
